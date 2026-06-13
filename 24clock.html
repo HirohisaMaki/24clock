@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>24時間アナログ時計（背景完全修正版）</title>
+
+<style>
+body {
+    background: #111;
+    color: white;
+    text-align: center;
+    font-family: sans-serif;
+}
+
+#digital {
+    font-size: 32px;
+    margin-top: 20px;
+}
+
+.clock {
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    position: relative;
+    margin: 20px auto;
+    border: 6px solid #00ffc3;
+    overflow: hidden;
+    /* 背景のベースを夜の色にする */
+    background-color: #0a0a2a;
+}
+
+#bg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.number {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 10;
+}
+
+.hand {
+    position: absolute;
+    width: 6px;
+    height: 150px;
+    background: red;
+    top: 50%;
+    left: 50%;
+    transform-origin: bottom;
+    z-index: 20;
+}
+
+.center {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 30;
+}
+
+.marker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    color: yellow;
+    background: rgba(0,0,0,0.6);
+    padding: 2px 4px;
+    border-radius: 4px;
+    z-index: 10;
+}
+</style>
+</head>
+
+<body>
+
+<h2>東京24時間時計（背景色修正完了）</h2>
+<p>頂点：12時 / 下：0時</p>
+<div id="digital"></div>
+
+<div class="clock" id="clock">
+    <div id="bg"></div>
+    <div class="hand" id="hand"></div>
+    <div class="center"></div>
+</div>
+
+<script>
+const clock = document.getElementById("clock");
+
+// 角度計算：12時を0度（頂点）とし、1時間ごとに15度進む
+function angleFromHour(hour) {
+    return (hour - 12) * 15;
+}
+
+// ===== 文字盤の数字配置（0-23時） =====
+for (let i = 0; i < 24; i++) {
+    const angle = angleFromHour(i);
+    // Math.sin/cos用にラジアン変換（時計の12時=上方向は-90度から計算）
+    const rad = (angle - 90) * Math.PI / 180;
+
+    const r = 170;
+    const x = 200 + r * Math.cos(rad);
+    const y = 200 + r * Math.sin(rad);
+
+    const el = document.createElement("div");
+    el.className = "number";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    el.textContent = i;
+
+    clock.appendChild(el);
+}
+
+// ===== 日の出・日の入り計算（簡易版） =====
+function getSunTimes(date) {
+    const day = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+    const dayLength = 12 + 2.5 * Math.sin((day - 80) / 365 * 2 * Math.PI);
+    const sunrise = 12 - dayLength / 2;
+    const sunset  = 12 + dayLength / 2;
+    return { sunrise, sunset };
+}
+
+// ===== マーカー表示 =====
+function drawMarker(hour, label) {
+    const angle = angleFromHour(hour);
+    const rad = (angle - 90) * Math.PI / 180;
+
+    const r = 130;
+    const x = 200 + r * Math.cos(rad);
+    const y = 200 + r * Math.sin(rad);
+
+    const m = document.createElement("div");
+    m.className = "marker";
+    m.style.left = x + "px";
+    m.style.top = y + "px";
+    m.textContent = label;
+
+    clock.appendChild(m);
+}
+
+const { sunrise, sunset } = getSunTimes(new Date());
+drawMarker(sunrise, "日の出");
+drawMarker(sunset, "日の入り");
+
+// ===== 更新ループ =====
+function update() {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    const s = now.getSeconds();
+    const decimalTime = h + m/60 + s/3600;
+
+    // デジタル表示
+    document.getElementById("digital").textContent =
+        `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+    // 針の回転
+    const handAngle = angleFromHour(decimalTime);
+    document.getElementById("hand").style.transform =
+        `translate(-50%, -100%) rotate(${handAngle}deg)`;
+
+    // 背景の塗り分け
+    // 基準を「0時（真下）」にするために from 180deg を指定。
+    // 0時から見た「日の出時間」と「日の入り時間」の角度を計算。
+    const startDeg = sunrise * 15;
+    const endDeg = sunset * 15;
+
+    document.getElementById("bg").style.background =
+        `conic-gradient(
+            from 180deg,
+            #0a0a2a 0deg,
+            #0a0a2a ${startDeg}deg,
+            #4a90e2 ${startDeg}deg,
+            #4a90e2 ${endDeg}deg,
+            #0a0a2a ${endDeg}deg,
+            #0a0a2a 360deg
+        )`;
+}
+
+setInterval(update, 1000);
+update();
+
+</script>
+
+</body>
+</html>
+
